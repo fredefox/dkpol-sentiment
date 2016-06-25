@@ -9,6 +9,8 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import Text.Printf
+import qualified Data.List as L
+import qualified Data.Text as T
 
 main :: IO ()
 main = getContents >>= sentiment' . lines >>= printSentiments
@@ -28,4 +30,14 @@ printSentiments (Left err) = print err
 printSentiments (Right xs) = xs `forM_` printS
 
 printS :: Sentiment -> IO ()
-printS s = printf "[%s (%.2f%%)] %s\n" (label s) (conf s * 100) (query s)
+printS s = printf "[%s (%.2f%%)] %s\n" (label s) (conf s * 100) (ellipsis . map spaces . T.unpack . query $ s)
+
+spaces :: Char -> Char
+spaces c
+    | c == '\n' = ' '
+    | otherwise = c
+
+ellipsis :: String -> String
+ellipsis s
+    | null . take 80 $ s = s
+    | otherwise          = (++ "...") . take 77 $ s
