@@ -1,0 +1,41 @@
+name:                dkpol-sentiment
+version:             0.1.0
+synopsis:            A web-endpoint for calculating doing sentiment-
+                     analysis based on twitter-feeds.
+description:         Please see README
+homepage:            https://github.com/fredefox/dkpol-sentiment#readme
+license:             GPL-3
+license-file:        LICENSE
+author:              Frederik Hanghøj Iversen
+maintainer:          fhi.1990@gmail.com
+copyright:           2016 Frederik Hanghøj Iversen
+build-type:          Simple
+-- extra-source-files:
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Lib
+  build-depends:       base >= 4.7 && < 5
+  default-language:    Haskell2010
+
+executable dkpol-sentiment-exe
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , dkpol-sentiment
+  default-language:    Haskell2010
+
+test-suite dkpol-sentiment-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , dkpol-sentiment
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/fredefox/dkpol-sentiment
