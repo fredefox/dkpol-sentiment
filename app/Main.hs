@@ -11,7 +11,7 @@ import qualified Data.ByteString.Char8 as C
 import Text.Printf
 
 main :: IO ()
-main = getArgs >>= sentiment' >>= printSentiments
+main = getContents >>= sentiment' . lines >>= printSentiments
 
 sentiment' :: [String] -> IO (Either SentimentException [Sentiment])
 sentiment' = sentiment endpoint apiKey . map C.pack
