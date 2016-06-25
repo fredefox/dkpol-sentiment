@@ -2,7 +2,7 @@
 
 module Sentiment
     ( sentiment
-    , Sentiment
+    , Sentiment(..)
     , SentimentException
     ) where
 
