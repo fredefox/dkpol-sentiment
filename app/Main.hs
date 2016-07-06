@@ -17,7 +17,6 @@ import Data.Maybe
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.ByteString.Char8 as S8
 import qualified Web.Twitter.Conduit as Twitter
-import Twitter
 import Web.Twitter.Types
 
 main :: IO ()
@@ -95,10 +94,6 @@ ellipsis s
 settingsToTwInfo :: Settings -> Twitter.TWInfo
 settingsToTwInfo s = Twitter.TWInfo tok Nothing
   where
-    cKey = undefined
-    cSecr = undefined
-    aTok = undefined
-    aSecr = undefined
     tok = Twitter.TWToken oauth cred
     oauth = Twitter.twitterOAuth
       { Twitter.oauthConsumerKey = S8.pack . twConsKey $ s
@@ -108,12 +103,6 @@ settingsToTwInfo s = Twitter.TWInfo tok Nothing
       [ ("oauth_token", S8.pack . twAccTok $ s)
       , ("oauth_token_secret", S8.pack . twAccSecr $ s)
       ]
-
-getSomePosts qry = settingsToTwInfo <$> loadSettings >>= \s -> getTwitterPosts s qry
-
-postTexts = map searchStatusText . searchResultStatuses
-
-getSomeSentiments qry = loadSettings >>= \s -> getSentimentsFromTwitter s qry
 
 getSentimentsFromTwitter :: Settings -> String -> IO (Either SentimentException [(SearchStatus, Sentiment)])
 getSentimentsFromTwitter s qry = do
@@ -131,3 +120,11 @@ sentFromSearch s st = Sentiment.sentiment url key (map f st)
     f = S8.pack . T.unpack . searchStatusText
     url = endpoint s
     key = apiKey s
+
+getTwitterPosts
+    :: Twitter.TWInfo
+    -> String
+    -> IO (SearchResult [SearchStatus])
+getTwitterPosts nfo s = do
+    mgr <- Twitter.newManager Twitter.tlsManagerSettings
+    Twitter.call nfo mgr . Twitter.search . T.pack $ s
