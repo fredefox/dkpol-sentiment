@@ -3,15 +3,11 @@
 
 module Main where
 
-import System.Environment
 import Sentiment (Sentiment, SentimentException)
 import qualified Sentiment
 import Control.Monad
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import Text.Printf
-import qualified Data.List as L
 import qualified Data.Text as T
 import GHC.Generics
 import Data.Yaml (Object)
@@ -131,7 +127,7 @@ getSentimentsFromTwitter s qry = do
 sentFromSearch :: Settings -> [SearchStatus] -> IO (Either SentimentException [Sentiment])
 sentFromSearch s st = Sentiment.sentiment url key (map f st)
   where
-    f :: SearchStatus -> ByteString
+    f :: SearchStatus -> S8.ByteString
     f = S8.pack . T.unpack . searchStatusText
     url = endpoint s
     key = apiKey s

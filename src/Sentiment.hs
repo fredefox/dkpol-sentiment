@@ -19,12 +19,8 @@ import qualified Data.ByteString.Lazy.Char8 as CL
 import qualified Data.ByteString.Char8 as C
 import Network.HTTP.Types.Status
 import Data.Aeson
-import Control.Lens
-import Data.Aeson.Lens
-import qualified Data.HashMap.Strict as M
 import Data.Aeson.Types
 import qualified Data.Vector as V
-import Data.Scientific (Scientific)
 import Network.HTTP.Types
 
 sentiment
@@ -70,14 +66,11 @@ parseSentiments txts bs = maybe (Left malformedJson) (Right . obj2sent) . decode
     --     .: "values"sults" .: "output1" .: "value" .: "values"
     obj2sent obj = maybe (error "plz no") sents (parseMaybe (\o -> o .: "Results" >>= (.: "output1") >>= (.: "value") >>= (.: "Values")) obj::Maybe Array)
     sents :: Array -> [Sentiment]
-    sents = map valToSent . zip txts . V.toList
+    sents = zipWith (curry valToSent) txts . V.toList
     valToSent :: (Text, Value) -> Sentiment
     valToSent (qry, Array a) = Sentiment { label = valToTxt $ a V.! 0, conf = valToDouble $ a V.! 1, query = qry }
     valToSent _ = error "no, no no!"
     malformedJson = undefined
-    invalidJson :: SentimentException
-    invalidJson = InvalidResponse (-1) "ParseError"
-        "Could not parse result JSON from endpoint"
 
 valToTxt :: Value -> Text
 valToTxt (String t) = t
