@@ -31,11 +31,12 @@ settingsPath = "settings.yaml"
 
 loadSettings :: IO Settings
 loadSettings = do
-  o <- fromMaybe errMalformed <$> Yaml.decodeFile settingsPath
+  o <- Yaml.decodeFile settingsPath >>= maybe errMalformed return
   maybe errInvalid return $ toSettings o
     where
       errMalformed = error "Malformed configuration file"
       errInvalid   = error "Invalid configuration file"
+      -- TODO: Report any keys that might be missing
       toSettings :: Object -> Maybe Settings
       toSettings o = do
         sentKey  <- "sentiment-api-key"       `lkpString` o
@@ -53,9 +54,7 @@ loadSettings = do
           , twAccSecr  = twASec
           }
       lkpString :: T.Text -> Object -> Maybe String
-      k `lkpString` o = do
-        v <- k `HashMap.lookup` o
-        valToString v
+      k `lkpString` o = k `HashMap.lookup` o >>= valToString
       valToString :: Data.Yaml.Value -> Maybe String
       valToString (Data.Yaml.String s) = Just . T.unpack $ s
       valToString _ = Nothing
