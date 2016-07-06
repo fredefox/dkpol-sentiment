@@ -122,6 +122,7 @@ data SentimentException = InvalidResponse Int Text Text
 
 instance Exception SentimentException
 
+-- TODO: This data-type ought not to include the query.
 data Sentiment = Sentiment
     { label :: Text
     , conf :: Double

@@ -19,10 +19,14 @@ import qualified Data.Yaml
 import qualified Data.Yaml.Include as Yaml
 import Data.Maybe
 import qualified Data.HashMap.Strict as HashMap
+import qualified Data.ByteString.Char8 as S8
+import qualified Web.Twitter.Conduit as Twitter
+import Twitter
+import Web.Twitter.Types
 
 main :: IO ()
 main = do
-  settings <- loadSettings settingsPath
+  settings <- loadSettings
   getContents
     >>= sentiment settings . lines
     >>= either print (`forM_` printSentiment)
@@ -30,18 +34,29 @@ main = do
 settingsPath :: String
 settingsPath = "settings.yaml"
 
-loadSettings :: FilePath -> IO Settings
-loadSettings p = do
-  o <- fromMaybe errMalformed <$> Yaml.decodeFile p
+loadSettings :: IO Settings
+loadSettings = do
+  o <- fromMaybe errMalformed <$> Yaml.decodeFile settingsPath
   maybe errInvalid return $ toSettings o
     where
       errMalformed = error "Malformed configuration file"
       errInvalid   = error "Invalid configuration file"
       toSettings :: Object -> Maybe Settings
       toSettings o = do
-        k <- "api-key"  `lkpString` o
-        e <- "endpoint" `lkpString` o
-        return Settings { apiKey = k, endpoint = e }
+        sentKey  <- "sentiment-api-key"       `lkpString` o
+        sentEndp <- "sentiment-endpoint"      `lkpString` o
+        twCKey   <- "twitter-consumer-key"    `lkpString` o
+        twCSec   <- "twitter-consumer-secret" `lkpString` o
+        twATok   <- "twitter-access-token"    `lkpString` o
+        twASec   <- "twitter-access-secret"   `lkpString` o
+        return Settings
+          { apiKey     = sentKey
+          , endpoint   = sentEndp
+          , twConsKey  = twCKey
+          , twConsSecr = twCSec
+          , twAccTok   = twATok
+          , twAccSecr  = twASec
+          }
       lkpString :: T.Text -> Object -> Maybe String
       k `lkpString` o = do
         v <- k `HashMap.lookup` o
@@ -59,6 +74,10 @@ sentiment settings = Sentiment.sentiment endpoint' apiKey' . map C.pack
 data Settings = Settings
     { apiKey :: String
     , endpoint :: String
+    , twConsKey :: String
+    , twConsSecr :: String
+    , twAccTok :: String
+    , twAccSecr :: String
     } deriving (Generic, Show)
 
 printSentiment :: Sentiment -> IO ()
@@ -76,3 +95,43 @@ ellipsis :: String -> String
 ellipsis s
     | null . take 80 $ s = s
     | otherwise          = (++ "...") . take 77 $ s
+
+settingsToTwInfo :: Settings -> Twitter.TWInfo
+settingsToTwInfo s = Twitter.TWInfo tok Nothing
+  where
+    cKey = undefined
+    cSecr = undefined
+    aTok = undefined
+    aSecr = undefined
+    tok = Twitter.TWToken oauth cred
+    oauth = Twitter.twitterOAuth
+      { Twitter.oauthConsumerKey = S8.pack . twConsKey $ s
+      , Twitter.oauthConsumerSecret = S8.pack . twConsSecr $ s
+      }
+    cred = Twitter.Credential
+      [ ("oauth_token", S8.pack . twAccTok $ s)
+      , ("oauth_token_secret", S8.pack . twAccSecr $ s)
+      ]
+
+getSomePosts qry = settingsToTwInfo <$> loadSettings >>= \s -> getTwitterPosts s qry
+
+postTexts = map searchStatusText . searchResultStatuses
+
+getSomeSentiments qry = loadSettings >>= \s -> getSentimentsFromTwitter s qry
+
+getSentimentsFromTwitter :: Settings -> String -> IO (Either SentimentException [(SearchStatus, Sentiment)])
+getSentimentsFromTwitter s qry = do
+    res <- getTwitterPosts (settingsToTwInfo s) qry
+    let statuses = searchResultStatuses res
+    eitherErrOrRes <- sentFromSearch s statuses
+    return $ do
+        sentiments <- eitherErrOrRes
+        return $ zip statuses sentiments
+
+sentFromSearch :: Settings -> [SearchStatus] -> IO (Either SentimentException [Sentiment])
+sentFromSearch s st = Sentiment.sentiment url key (map f st)
+  where
+    f :: SearchStatus -> ByteString
+    f = S8.pack . T.unpack . searchStatusText
+    url = endpoint s
+    key = apiKey s
