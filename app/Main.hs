@@ -3,7 +3,8 @@
 module Main where
 
 import System.Environment
-import Sentiment
+import Sentiment (Sentiment, SentimentException)
+import qualified Sentiment
 import Control.Monad
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -14,11 +15,11 @@ import qualified Data.Text as T
 
 main :: IO ()
 main = getContents
-    >>= sentiment' . lines
+    >>= sentiment . lines
     >>= either print (`forM_` printSentiment)
 
-sentiment' :: [String] -> IO (Either SentimentException [Sentiment])
-sentiment' = sentiment endpoint apiKey . map C.pack
+sentiment :: [String] -> IO (Either SentimentException [Sentiment])
+sentiment = Sentiment.sentiment endpoint apiKey . map C.pack
 
 apiKey :: String
 apiKey = error "Enter credentials"
@@ -28,9 +29,9 @@ endpoint = "https://ussouthcentral.services.azureml.net/workspaces/c788c20533a54
 
 printSentiment :: Sentiment -> IO ()
 printSentiment s = printf "[%s (%.2f%%)] %s\n"
-    (label s)
-    (conf s * 100)
-    (ellipsis . map spaces . T.unpack . query $ s)
+    (Sentiment.label s)
+    (Sentiment.conf s * 100)
+    (ellipsis . map spaces . T.unpack . Sentiment.query $ s)
 
 spaces :: Char -> Char
 spaces c
