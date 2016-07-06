@@ -1,4 +1,5 @@
 {-# language OverloadedStrings #-}
+{-# language DeriveGeneric #-}
 
 module Main where
 
@@ -12,20 +13,53 @@ import qualified Data.ByteString.Char8 as C
 import Text.Printf
 import qualified Data.List as L
 import qualified Data.Text as T
+import GHC.Generics
+import Data.Yaml (Object)
+import qualified Data.Yaml
+import qualified Data.Yaml.Include as Yaml
+import Data.Maybe
+import qualified Data.HashMap.Strict as HashMap
 
 main :: IO ()
-main = getContents
-    >>= sentiment . lines
+main = do
+  settings <- loadSettings settingsPath
+  getContents
+    >>= sentiment settings . lines
     >>= either print (`forM_` printSentiment)
 
-sentiment :: [String] -> IO (Either SentimentException [Sentiment])
-sentiment = Sentiment.sentiment endpoint apiKey . map C.pack
+settingsPath :: String
+settingsPath = "settings.yaml"
 
-apiKey :: String
-apiKey = error "Enter credentials"
+loadSettings :: FilePath -> IO Settings
+loadSettings p = do
+  o <- fromMaybe errMalformed <$> Yaml.decodeFile p
+  maybe errInvalid return $ toSettings o
+    where
+      errMalformed = error "Malformed configuration file"
+      errInvalid   = error "Invalid configuration file"
+      toSettings :: Object -> Maybe Settings
+      toSettings o = do
+        k <- "api-key"  `lkpString` o
+        e <- "endpoint" `lkpString` o
+        return Settings { apiKey = k, endpoint = e }
+      lkpString :: T.Text -> Object -> Maybe String
+      k `lkpString` o = do
+        v <- k `HashMap.lookup` o
+        valToString v
+      valToString :: Data.Yaml.Value -> Maybe String
+      valToString (Data.Yaml.String s) = Just . T.unpack $ s
+      valToString _ = Nothing
 
-endpoint :: String
-endpoint = "https://ussouthcentral.services.azureml.net/workspaces/c788c20533a549f78f520f17b4b17f39/services/fe5d1e3a57a04236892b69f36a0de3ef/execute?api-version=2.0&details=true"
+sentiment :: Settings -> [String] -> IO (Either SentimentException [Sentiment])
+sentiment settings = Sentiment.sentiment endpoint' apiKey' . map C.pack
+  where
+    endpoint' = endpoint settings
+    apiKey' = apiKey settings
+
+data Settings = Settings
+    { apiKey :: String
+    , endpoint :: String
+    } deriving (Generic, Show)
 
 printSentiment :: Sentiment -> IO ()
 printSentiment s = printf "[%s (%.2f%%)] %s\n"
