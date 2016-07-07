@@ -16,15 +16,17 @@ import qualified Data.Yaml.Include as Yaml
 import Data.Maybe
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.ByteString.Char8 as S8
+import qualified Data.ByteString.Lazy as BSL
 import qualified Web.Twitter.Conduit as Twitter
 import Web.Twitter.Types
+import Control.Applicative
+import Snap.Core
+import Snap.Http.Server
+import qualified Data.Aeson as Aeson
+import Control.Monad.IO.Class
 
 main :: IO ()
-main = do
-  settings <- loadSettings
-  getContents
-    >>= sentiment settings . lines
-    >>= either print (`forM_` printSentiment)
+main = loadSettings >>= quickHttpServe . site
 
 settingsPath :: String
 settingsPath = "settings.yaml"
@@ -103,7 +105,7 @@ settingsToTwInfo s = Twitter.TWInfo tok Nothing
       , ("oauth_token_secret", S8.pack . twAccSecr $ s)
       ]
 
-getSentimentsFromTwitter :: Settings -> String -> IO (Either SentimentException [(SearchStatus, Sentiment)])
+getSentimentsFromTwitter :: Settings -> T.Text -> IO (Either SentimentException [(SearchStatus, Sentiment)])
 getSentimentsFromTwitter s qry = do
     res <- getTwitterPosts (settingsToTwInfo s) qry
     let statuses = searchResultStatuses res
@@ -122,8 +124,24 @@ sentFromSearch s st = Sentiment.sentiment url key (map f st)
 
 getTwitterPosts
     :: Twitter.TWInfo
-    -> String
+    -> T.Text
     -> IO (SearchResult [SearchStatus])
 getTwitterPosts nfo s = do
     mgr <- Twitter.newManager Twitter.tlsManagerSettings
-    Twitter.call nfo mgr . Twitter.search . T.pack $ s
+    Twitter.call nfo mgr . Twitter.search $ s
+
+site :: Settings -> Snap ()
+site s = route
+  [ ("sentiments/:query", sentimentsHandler s)
+  ]
+
+sentimentsHandler :: Settings -> Snap ()
+sentimentsHandler s = do
+    param <- getParam "query"
+    maybe (writeBS "must specify echo/param in URL") performSearch param
+      where
+        performSearch :: S8.ByteString -> Snap ()
+        performSearch qry = liftIO >=> writeBS $ do
+          resp <- getSentimentsFromTwitter s . T.pack . S8.unpack $ qry
+          return . BSL.toStrict
+            $ either (const "oh's to da no's") Aeson.encode resp

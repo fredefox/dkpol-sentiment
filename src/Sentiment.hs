@@ -1,4 +1,5 @@
 {-# language OverloadedStrings #-}
+{-# language DeriveGeneric #-}
 
 module Sentiment
     ( sentiment
@@ -22,6 +23,7 @@ import Data.Aeson
 import Data.Aeson.Types
 import qualified Data.Vector as V
 import Network.HTTP.Types
+import GHC.Generics
 
 sentiment
     :: String
@@ -111,7 +113,7 @@ encodeParams txts = C.pack . CL.unpack . encode $ object
 data SentimentException = InvalidResponse Int Text Text
     | OtherException SomeException
     | GenericException String
-    deriving (Show, Typeable)
+    deriving (Generic, Show, Typeable)
 
 instance Exception SentimentException
 
@@ -120,4 +122,9 @@ data Sentiment = Sentiment
     { label :: Text
     , conf :: Double
     , query :: Text
-    } deriving (Show)
+    } deriving (Generic, Show)
+
+-- Can't do this because SomeException is not an instance of Generic
+-- instance ToJSON SentimentException where
+
+instance ToJSON Sentiment where
