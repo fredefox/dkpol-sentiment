@@ -13,13 +13,11 @@ import GHC.Generics
 import Data.Yaml (Object)
 import qualified Data.Yaml
 import qualified Data.Yaml.Include as Yaml
-import Data.Maybe
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.ByteString.Char8 as S8
 import qualified Data.ByteString.Lazy as BSL
 import qualified Web.Twitter.Conduit as Twitter
 import Web.Twitter.Types
-import Control.Applicative
 import Snap.Core
 import Snap.Http.Server
 import qualified Data.Aeson as Aeson
