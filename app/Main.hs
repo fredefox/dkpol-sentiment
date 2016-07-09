@@ -131,7 +131,7 @@ getTwitterPosts nfo s = do
     Twitter.call nfo mgr . Twitter.search $ s
 
 site :: Settings -> Snap ()
-site s = route
+site s = modifyResponse (setHeader "Access-Control-Allow-Origin" "*") >> route
   [ ("sentiments/:query", sentimentsHandler s)
   ]
 
