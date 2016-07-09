@@ -1,4 +1,5 @@
 {-# language OverloadedStrings #-}
+{-# language DeriveGeneric #-}
 
 module Sentiment
     ( sentiment
@@ -19,13 +20,10 @@ import qualified Data.ByteString.Lazy.Char8 as CL
 import qualified Data.ByteString.Char8 as C
 import Network.HTTP.Types.Status
 import Data.Aeson
-import Control.Lens
-import Data.Aeson.Lens
-import qualified Data.HashMap.Strict as M
 import Data.Aeson.Types
 import qualified Data.Vector as V
-import Data.Scientific (Scientific)
 import Network.HTTP.Types
+import GHC.Generics
 
 sentiment
     :: String
@@ -70,14 +68,11 @@ parseSentiments txts bs = maybe (Left malformedJson) (Right . obj2sent) . decode
     --     .: "values"sults" .: "output1" .: "value" .: "values"
     obj2sent obj = maybe (error "plz no") sents (parseMaybe (\o -> o .: "Results" >>= (.: "output1") >>= (.: "value") >>= (.: "Values")) obj::Maybe Array)
     sents :: Array -> [Sentiment]
-    sents = map valToSent . zip txts . V.toList
+    sents = zipWith (curry valToSent) txts . V.toList
     valToSent :: (Text, Value) -> Sentiment
     valToSent (qry, Array a) = Sentiment { label = valToTxt $ a V.! 0, conf = valToDouble $ a V.! 1, query = qry }
     valToSent _ = error "no, no no!"
     malformedJson = undefined
-    invalidJson :: SentimentException
-    invalidJson = InvalidResponse (-1) "ParseError"
-        "Could not parse result JSON from endpoint"
 
 valToTxt :: Value -> Text
 valToTxt (String t) = t
@@ -118,12 +113,18 @@ encodeParams txts = C.pack . CL.unpack . encode $ object
 data SentimentException = InvalidResponse Int Text Text
     | OtherException SomeException
     | GenericException String
-    deriving (Show, Typeable)
+    deriving (Generic, Show, Typeable)
 
 instance Exception SentimentException
 
+-- TODO: This data-type ought not to include the query.
 data Sentiment = Sentiment
     { label :: Text
     , conf :: Double
     , query :: Text
-    } deriving (Show)
+    } deriving (Generic, Show)
+
+-- Can't do this because SomeException is not an instance of Generic
+-- instance ToJSON SentimentException where
+
+instance ToJSON Sentiment where

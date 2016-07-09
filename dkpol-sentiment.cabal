@@ -1,5 +1,5 @@
 name:                dkpol-sentiment
-version:             0.1.0
+version:             0.2.0
 synopsis:            A web-endpoint for calculating doing sentiment-
                      analysis based on twitter-feeds.
 description:         Please see README
@@ -28,6 +28,8 @@ library
                      , unordered-containers == 0.2.*
                      , vector == 0.11.*
                      , scientific == 0.3.*
+                     , twitter-conduit == 0.2.*
+                     , authenticate-oauth == 1.5.*
   default-language:    Haskell2010
 
 executable dkpol-sentiment-exe
@@ -40,6 +42,12 @@ executable dkpol-sentiment-exe
                      , bytestring == 0.10.*
                      , yaml == 0.8.*
                      , unordered-containers == 0.2.*
+                     , twitter-conduit == 0.2.*
+                     , twitter-types == 0.7.*
+                     , snap-core == 0.9.*
+                     , snap-server == 0.9.*
+                     , transformers == 0.4.*
+                     , aeson == 0.11.*
   default-language:    Haskell2010
 
 test-suite dkpol-sentiment-test
